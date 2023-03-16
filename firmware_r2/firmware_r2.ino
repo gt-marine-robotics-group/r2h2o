@@ -54,7 +54,7 @@ const int BB_B_PIN = 6;
 const int BB_C_PIN = 7;
 
 // WATER SHOOTER MOTOR
-const int BP_SIG_PIN = A1;
+const int BP_SIG_PIN = 52;
 Servo motor_bp; //bilge pump
 
 // VARS -------------------------------------------------------------
@@ -84,9 +84,11 @@ rclc_support_t support;
 rcl_node_t node;
 rcl_timer_t timer;
 
-//Nick Code :^(
+int ros_cmd_a;
+int ros_cmd_b;
+int ros_cmd_bp;
 
-float limit_coefficient = -1 * .9;
+int limit_coefficient = 1;
 
 void motor_a_callback(const void * msgin) 
 {
@@ -123,7 +125,7 @@ bool ros_create_entities() {
   // create node
   rcl_node_options_t node_ops = rcl_node_get_default_options();
   node_ops.domain_id = (size_t)(12);
-  RCCHECK(rclc_node_init_with_options(&node, "micro_ros_arduino_node", "", &support, &node_ops));
+  RCCHECK(rclc_node_init_with_options(&node, "aux_node", "", &support, &node_ops));
   // create publisher
 //  RCCHECK(rclc_publisher_init_default(
 //    &vehicle_state_pub,
@@ -177,23 +179,28 @@ void ros_destroy_entities() {
 
 void exec_mode(int mode, bool killed) {
   // Publish Vehicle State
-  else {
-    if (mode == 0){ // AUTONOMOUS
-      ros_handler();
-      motor_a.writeMicroseconds(ros_cmd_a*4 + 1500);
-      motor_b.writeMicroseconds(ros_cmd_b*4 + 1500);
-      motor_bp.writeMicroseconds(ros_cmd_bp*4 + 1500);
-      delay(20);
+  if (mode == 0){ // AUTONOMOUS
+    ros_handler();
+    motor_a.writeMicroseconds(ros_cmd_a*4 + 1500);
+    motor_b.writeMicroseconds(ros_cmd_b*4 + 1500);
+    // motor_bp.writeMicroseconds(ros_cmd_bp*4 + 1500);
+    delay(20);
 //      msg_x.data = 2;
-    }
-    else if (mode == 1) { // TEST
-      motor_a.writeMicroseconds(50*4 + 1500);
-      motor_b.writeMicroseconds(50*4 + 1500);
-      motor_bp.writeMicroseconds(100*4 + 1500);
-    }
-    else {
-      Serial.println("Error, mode not supported");
-    }
+  }
+  else if (mode == 1) { // TEST
+    Serial.println("ON");
+    motor_a.writeMicroseconds(50*4 + 1500);
+    motor_b.writeMicroseconds(50*4 + 1500);
+    digitalWrite(BP_SIG_PIN, HIGH);
+    delay(1000);
+    Serial.println("OFF");
+    motor_a.writeMicroseconds(0 + 1500);
+    motor_b.writeMicroseconds(0 + 1500);
+    digitalWrite(BP_SIG_PIN, LOW);
+    delay(1000);
+  }
+  else {
+    Serial.println("Error, mode not supported");
   }
 }
 
@@ -207,27 +214,28 @@ void setup() {
   Serial.println("MOTOR SETUP");
   motor_a.attach(A_SIG_PIN);
   motor_b.attach(B_SIG_PIN);
-  motor_bp.attach(BP_SIG_PIN);
+  // motor_bp.attach(BP_SIG_PIN);
+  // pinMode(LED_BUILTIN, OUTPUT);
+  pinMode(BP_SIG_PIN, OUTPUT);
 
   motor_a.writeMicroseconds(1500);
   motor_b.writeMicroseconds(1500);
   motor_bp.writeMicroseconds(1500);
+  delay(1000);
 
-  Serial.println("============= CALIBRATION COMPLETE ===============");
-  delay(500);
   set_microros_transports();
   
   state = WAITING_AGENT;
 
   Serial.println("==================================================");
-  Serial.println("============ NOVA MOTOR INIT COMPLETE ============");
+  Serial.println("============ AUX SYSTEM INIT COMPLETE ============");
   Serial.println("==================================================");
 }
 
 void zero_all_motors() {
   motor_a.writeMicroseconds(1500);
   motor_b.writeMicroseconds(1500);
-  motor_bp.writeMicrosecodns(1500;)
+  motor_bp.writeMicroseconds(1500);
 }
 void zero_ros_cmds() {
   ros_cmd_a = 0;
@@ -240,14 +248,12 @@ void ros_handler() {
   bool created = false;
   switch (state) {
     case WAITING_AGENT:
-      cfg_lt(0, 0, 3, 0);
       zero_ros_cmds();
       zero_all_motors();
       EXECUTE_EVERY_N_MS(2000, state = (RMW_RET_OK == rmw_uros_ping_agent(100, 1)) ? AGENT_AVAILABLE : WAITING_AGENT;);
       
       break;
     case AGENT_AVAILABLE:
-      cfg_lt(0, 0, 2, 0);
       zero_ros_cmds();
       zero_all_motors();
       created = ros_create_entities();
@@ -258,11 +264,9 @@ void ros_handler() {
       };
       break;
     case AGENT_CONNECTED:
-      cfg_lt(0, 0, 1, 0);
       EXECUTE_EVERY_N_MS(1000, state = (RMW_RET_OK == rmw_uros_ping_agent(100, 1)) ? AGENT_CONNECTED : AGENT_DISCONNECTED;);
       break;
     case AGENT_DISCONNECTED:
-      cfg_lt(3, 0, 3, 0);
       zero_ros_cmds();
       zero_all_motors();
       ros_destroy_entities();
@@ -276,7 +280,7 @@ void ros_handler() {
 
 // TODO: Refactor to use control_state
 bool boat_killed = false;
-int cmd_ctr = 1;  // 0 if auto, 1 if test
+int cmd_ctr = 0;  // 0 if auto, 1 if test
 
 void loop() {
   // Get loop time
