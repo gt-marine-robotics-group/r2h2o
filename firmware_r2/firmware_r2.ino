@@ -125,7 +125,7 @@ bool ros_create_entities() {
   // create node
   rcl_node_options_t node_ops = rcl_node_get_default_options();
   node_ops.domain_id = (size_t)(12);
-  RCCHECK(rclc_node_init_with_options(&node, "aux_node", "", &support, &node_ops));
+  RCCHECK(rclc_node_init_with_options(&node, "aux_node2", "", &support, &node_ops));
   // create publisher
 //  RCCHECK(rclc_publisher_init_default(
 //    &vehicle_state_pub,
@@ -137,12 +137,12 @@ bool ros_create_entities() {
     &motor_a_sub,
     &node,
     ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Float32),
-    "/ball_shooter/throttle_cmd"));
+    "/ball_shooter/throttle_a_cmd"));
   RCCHECK(rclc_subscription_init_default(
     &motor_b_sub,
     &node,
     ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Float32),
-    "/ball_shooter/throttle_cmd"));
+    "/ball_shooter/throttle_b_cmd"));
   RCCHECK(rclc_subscription_init_default(
     &motor_bp_sub,
     &node,
