@@ -11,8 +11,8 @@
 #include <std_msgs/msg/int32.h>
 #include <std_msgs/msg/float32.h>
 /*
-  GITMRG Nova V1.1 Custom BLDC Thruster Driver
-
+  GTMRG Auxiliary System Control Firmware
+  https://content.vexrobotics.com/vexpro/pdf/VictorSPX-UserGuide-20190117.pdf
   v1.1 RoboBoat Testing
 
   Resources
@@ -183,15 +183,20 @@ void exec_mode(int mode, bool killed) {
     ros_handler();
     motor_a.writeMicroseconds(ros_cmd_a*4 + 1500);
     motor_b.writeMicroseconds(ros_cmd_b*4 + 1500);
-    // motor_bp.writeMicroseconds(ros_cmd_bp*4 + 1500);
+    if (ros_cmd_bp > 50) {
+      digitalWrite(BP_SIG_PIN, HIGH);
+    }
+    else {
+      digitalWrite(BP_SIG_PIN, LOW);
+    }
     delay(20);
 //      msg_x.data = 2;
   }
   else if (mode == 1) { // TEST
     Serial.println("ON");
-    motor_a.writeMicroseconds(50*4 + 1500);
-    motor_b.writeMicroseconds(50*4 + 1500);
-    digitalWrite(BP_SIG_PIN, HIGH);
+    motor_a.writeMicroseconds(1500);
+    motor_b.writeMicroseconds(1500);
+    digitalWrite(BP_SIG_PIN, LOW);
     delay(1000);
     Serial.println("OFF");
     motor_a.writeMicroseconds(0 + 1500);
@@ -217,10 +222,10 @@ void setup() {
   // motor_bp.attach(BP_SIG_PIN);
   // pinMode(LED_BUILTIN, OUTPUT);
   pinMode(BP_SIG_PIN, OUTPUT);
+  digitalWrite(BP_SIG_PIN, LOW);
 
   motor_a.writeMicroseconds(1500);
   motor_b.writeMicroseconds(1500);
-  motor_bp.writeMicroseconds(1500);
   delay(1000);
 
   set_microros_transports();
@@ -235,7 +240,7 @@ void setup() {
 void zero_all_motors() {
   motor_a.writeMicroseconds(1500);
   motor_b.writeMicroseconds(1500);
-  motor_bp.writeMicroseconds(1500);
+  digitalWrite(BP_SIG_PIN, LOW);
 }
 void zero_ros_cmds() {
   ros_cmd_a = 0;
